@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly Hello World</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebAssembly Hello World</h1>
+        
+        <p>This is a simple WebAssembly demonstration using Emscripten.</p>
+        
+        <button onclick="callHello()">Call Hello Function</button>
+        <button onclick="testAdd()">Test Add Function</button>
+        <button onclick="clearOutput()">Clear Output</button>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        let output = document.getElementById('output');
+        let helloFunc, addFunc;
+        
+        // Override console.log to display in our output div
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            output.textContent += args.join(' ') + '\n';
+        };
+        
+        // Configure the Module before loading the WASM
+        var Module = {
+            onRuntimeInitialized: function() {
+                output.textContent += 'WebAssembly module is ready!\n';
+                
+                // Debug: List available functions
+                output.textContent += 'Available functions:\n';
+                for (let key in Module) {
+                    if (typeof Module[key] === 'function') {
+                        output.textContent += '  ' + key + '\n';
+                    }
+                }
+                
+                // With Embind, functions are directly available on Module
+                if (Module.hello) {
+                    output.textContent += 'Found hello function\n';
+                    helloFunc = Module.hello;
+                } else {
+                    output.textContent += 'hello function not found\n';
+                }
+                
+                if (Module.add) {
+                    output.textContent += 'Found add function\n';
+                    addFunc = Module.add;
+                } else {
+                    output.textContent += 'add function not found\n';
+                }
+                
+                output.textContent += 'Functions ready!\n';
+            },
+            print: function(text) {
+                output.textContent += text + '\n';
+            },
+            printErr: function(text) {
+                output.textContent += 'Error: ' + text + '\n';
+            }
+        };
+        
+        function callHello() {
+            if (helloFunc) {
+                try {
+                    helloFunc();
+                } catch (e) {
+                    output.textContent += 'Error calling hello: ' + e.message + '\n';
+                }
+            } else {
+                output.textContent += 'Hello function not ready yet\n';
+            }
+        }
+        
+        function testAdd() {
+            if (addFunc) {
+                try {
+                    const a = 15;
+                    const b = 27;
+                    const result = addFunc(a, b);
+                    output.textContent += `${a} + ${b} = ${result}\n`;
+                } catch (e) {
+                    output.textContent += 'Error calling add: ' + e.message + '\n';
+                }
+            } else {
+                output.textContent += 'Add function not ready yet\n';
+            }
+        }
+        
+        function clearOutput() {
+            output.textContent = '';
+        }
+    </script>
+    <script src="hello.js"></script>
+</body>
+</html>
