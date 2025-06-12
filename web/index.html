@@ -74,30 +74,44 @@
             onRuntimeInitialized: function() {
                 output.textContent += 'WebAssembly module is ready!\n';
                 
-                // Debug: List available functions
-                output.textContent += 'Available functions:\n';
-                for (let key in Module) {
-                    if (typeof Module[key] === 'function') {
-                        output.textContent += '  ' + key + '\n';
+                // Check if ccall and cwrap are available
+                output.textContent += 'ccall available: ' + (typeof Module.ccall !== 'undefined') + '\n';
+                output.textContent += 'cwrap available: ' + (typeof Module.cwrap !== 'undefined') + '\n';
+                
+                // Debug: check what functions are available in Module
+                output.textContent += 'Checking available functions:\n';
+                ['_hello', '_add', 'hello', 'add'].forEach(name => {
+                    output.textContent += `  ${name}: ${typeof Module[name]} (${Module[name] !== undefined})\n`;
+                });
+                
+                // Also check wasmExports if available
+                if (typeof wasmExports !== 'undefined') {
+                    output.textContent += 'wasmExports available, checking functions:\n';
+                    ['hello', 'add', '_hello', '_add'].forEach(name => {
+                        output.textContent += `  wasmExports.${name}: ${typeof wasmExports[name]} (${wasmExports[name] !== undefined})\n`;
+                    });
+                }
+                
+                // Try to wrap the functions using cwrap
+                try {
+                    helloFunc = Module.cwrap('hello', null, []);
+                    addFunc = Module.cwrap('add', 'number', ['number', 'number']);
+                    output.textContent += 'Functions wrapped successfully!\n';
+                } catch (e) {
+                    output.textContent += 'Error wrapping functions: ' + e.message + '\n';
+                    
+                    // Try direct access
+                    if (Module._hello) {
+                        output.textContent += 'Found _hello, trying direct access\n';
+                        helloFunc = Module._hello;
+                    }
+                    if (Module._add) {
+                        output.textContent += 'Found _add, trying direct access\n';
+                        addFunc = Module._add;
                     }
                 }
                 
-                // With Embind, functions are directly available on Module
-                if (Module.hello) {
-                    output.textContent += 'Found hello function\n';
-                    helloFunc = Module.hello;
-                } else {
-                    output.textContent += 'hello function not found\n';
-                }
-                
-                if (Module.add) {
-                    output.textContent += 'Found add function\n';
-                    addFunc = Module.add;
-                } else {
-                    output.textContent += 'add function not found\n';
-                }
-                
-                output.textContent += 'Functions ready!\n';
+                output.textContent += 'Setup complete!\n';
             },
             print: function(text) {
                 output.textContent += text + '\n';
@@ -115,7 +129,12 @@
                     output.textContent += 'Error calling hello: ' + e.message + '\n';
                 }
             } else {
-                output.textContent += 'Hello function not ready yet\n';
+                // Try ccall as fallback
+                try {
+                    Module.ccall('hello', null, [], []);
+                } catch (e) {
+                    output.textContent += 'Hello function not ready yet: ' + e.message + '\n';
+                }
             }
         }
         
@@ -130,7 +149,15 @@
                     output.textContent += 'Error calling add: ' + e.message + '\n';
                 }
             } else {
-                output.textContent += 'Add function not ready yet\n';
+                // Try ccall as fallback
+                try {
+                    const a = 15;
+                    const b = 27;
+                    const result = Module.ccall('add', 'number', ['number', 'number'], [a, b]);
+                    output.textContent += `${a} + ${b} = ${result}\n`;
+                } catch (e) {
+                    output.textContent += 'Add function not ready yet: ' + e.message + '\n';
+                }
             }
         }
         
